@@ -1,0 +1,52 @@
+#!/usr/bin/env python
+
+import rospy
+from exKalmanClass import ExKalman as exkFilter
+from ackermann_msgs.msg import AckermannDrive
+from std_msgs.msg import Float32MultiArray
+from std_msgs.msg import String
+#pub = rospy.Publisher('kalman_topic', String, queue_size=1)
+pub = rospy.Publisher('kalman_topic', Float32MultiArray, queue_size=1)
+
+
+filter = exkFilter()
+featureDetected = False
+featureData = None
+
+def featureCallback(data):
+    featureDetected = True
+    featureData = [data.x1, data.y1, data.x2, data.y2]
+        
+
+def ackermannCallback(data):
+    rospy.loginfo("got ackermann")
+
+    filter.predict([data.steering_angle, data.speed])
+    filter.update([data.steering_angle, data.speed], None)
+    featureData = None
+
+    state = filter.getState()
+    mess = Float32MultiArray()
+    mess.data = [state.item(0),state.item(1)]
+#    rospy.loginfo("x: " + str(state.item(0)))
+#    rospy.loginfo("y: " + str(state.item(1)))
+#    rospy.loginfo("got ackermann: " + str(mess.data))
+
+#    message = "" + str(state[0]) + " " + str(state[1])
+#    pub.publish(message)
+    pub.publish(mess)
+
+
+def runKalman():
+    rospy.init_node('exKalmanNode', anonymous=True)
+    rospy.Subscriber("master_drive", AckermannDrive, ackermannCallback)
+#    rospy.Subscriber('', , featureCallback)
+    rospy.spin()
+
+
+if __name__ == '__main__':
+    #try:
+    runKalman()
+    #except rospy.ROSInterruotException:
+    #    pass
+
